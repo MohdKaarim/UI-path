@@ -1,78 +1,65 @@
 import Fuse from 'fuse.js';
 import { getAllQuestions } from '../data';
 
-let _fuse = null;
-let _questions = null;
+const _questions = getAllQuestions();
+const _fuse = new Fuse(_questions, {
+  keys: [
+    { name: 'question',   weight: 4 },
+    { name: 'unitTitle',  weight: 2.5 },
+    { name: 'answer',     weight: 1.5 },
+    { name: 'paperTitle', weight: 1 },
+  ],
+  threshold: 0.38,
+  minMatchCharLength: 3,
+  includeScore: true,
+  ignoreLocation: true,
+  useExtendedSearch: false,
+});
+const _byId = new Map(_questions.map(item => [item.id, item]));
 
-function init() {
-  if (_fuse) return;
-  _questions = getAllQuestions();
-  _fuse = new Fuse(_questions, {
-    keys: [
-      { name: 'question',   weight: 4 },
-      { name: 'unitTitle',  weight: 2.5 },
-      { name: 'answer',     weight: 1.5 },
-      { name: 'paperTitle', weight: 1 },
-    ],
-    threshold: 0.38,
-    minMatchCharLength: 3,
-    includeScore: true,
-    ignoreLocation: true,   // don't penalise matches deep inside long answer text
-    useExtendedSearch: false,
-  });
-}
+const STOP_WORDS = new Set([
+  'what','when','where','which','who','whom','whose','why','how',
+  'the','and','for','are','was','were','did','does','about',
+  'with','that','this','from','have','had','has','its','their',
+  'write','explain','discuss','describe','define','give','note',
+  'briefly','short','long','marks','mark','question','answer',
+]);
 
-// Split a query into individual keywords so multi-word phrases get better coverage
 function keywordsOf(query) {
   return query
     .toLowerCase()
     .replace(/[^\w\s]/g, '')
     .split(/\s+/)
-    .filter(w => w.length >= 3 && !STOP_WORDS.has(w));
+    .filter(w => w.length >= 3 && !STOP_WORDS.has(w))
+    .slice(0, 3);
 }
 
-const STOP_WORDS = new Set([
-  'what', 'when', 'where', 'which', 'who', 'whom', 'whose', 'why', 'how',
-  'the', 'and', 'for', 'are', 'was', 'were', 'did', 'does', 'about',
-  'with', 'that', 'this', 'from', 'have', 'had', 'has', 'its', 'their',
-  'write', 'explain', 'discuss', 'describe', 'define', 'give', 'note',
-  'briefly', 'short', 'long', 'marks', 'mark', 'question', 'answer',
-]);
-
 export function searchLocal(query, limit = 5) {
-  init();
   const q = query.trim();
-  const scoreMap = new Map(); // id → best Fuse score
+  const scoreMap = new Map();
 
-  // 1. Full-phrase search
-  for (const r of _fuse.search(q, { limit: 20 })) {
+  for (const r of _fuse.search(q, { limit: 10 })) {
     const cur = scoreMap.get(r.item.id) ?? Infinity;
     if (r.score < cur) scoreMap.set(r.item.id, r.score);
   }
 
-  // 2. Per-keyword search — boosts results that match multiple terms
-  const kws = keywordsOf(q);
-  for (const kw of kws) {
-    for (const r of _fuse.search(kw, { limit: 15 })) {
+  for (const kw of keywordsOf(q)) {
+    for (const r of _fuse.search(kw, { limit: 8 })) {
       const cur = scoreMap.get(r.item.id) ?? Infinity;
-      // Discount per-keyword score slightly so full-phrase always wins
       const adjusted = r.score + 0.05;
       if (adjusted < cur) scoreMap.set(r.item.id, adjusted);
     }
   }
 
-  // 3. Filter by minimum relevance and sort
   const SCORE_CUTOFF = 0.52;
-  const byId = new Map(_questions.map(q => [q.id, q]));
 
   const ranked = [...scoreMap.entries()]
     .filter(([, s]) => s <= SCORE_CUTOFF)
     .sort((a, b) => a[1] - b[1])
     .slice(0, limit * 2)
-    .map(([id]) => byId.get(id))
+    .map(([id]) => _byId.get(id))
     .filter(Boolean);
 
-  // 4. Deduplicate by unit — prefer breadth over depth
   const seenUnit = new Set();
   const results = [];
   for (const item of ranked) {
@@ -83,59 +70,53 @@ export function searchLocal(query, limit = 5) {
     }
     if (results.length >= limit) break;
   }
-
   return results;
 }
 
-function excerpt(text, maxWords = 75) {
-  const words = text.trim().split(/\s+/);
-  if (words.length <= maxWords) return text.trim();
-  return words.slice(0, maxWords).join(' ') + '…';
+function firstSentences(text, max = 2) {
+  const clean = text.replace(/\n+/g, ' ').trim();
+  const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
+  return sentences.slice(0, max).join(' ').trim();
+}
+
+// Build a source chip object for navigation
+function toSourceChip(r) {
+  return {
+    label: `${r.paperCode} · ${r.unitTitle} (${r.markType}M)`,
+    questionId: r.id,
+    paperCode: r.paperCode,
+    unitId: r.unitId,
+    markType: r.markType,
+  };
 }
 
 export function buildLocalResponse(results) {
   if (!results.length) {
     return {
       text:
-        "I couldn't find a close match in the study material.\n\n" +
-        "Try asking about a specific topic, e.g.:\n" +
-        "• \"Harappan Civilization\"\n" +
-        "• \"Bhakti movement\"\n" +
-        "• \"Drain of Wealth\"\n" +
-        "• \"Battle of Talikota\"\n\n" +
-        "Or add a Gemini API key in Profile for AI-powered answers.",
+        "I couldn't find that in the syllabus. Try asking about a specific topic — for example:\n" +
+        "• Harappan Civilization\n• Bhakti movement\n• Drain of Wealth\n• Battle of Talikota",
       sources: [],
     };
   }
 
   const top = results[0];
-  const topLabel = `${top.paperCode} › ${top.unitTitle}`;
+  let text = firstSentences(top.answer, 2);
 
-  let text = '';
-
-  // Header: where this answer comes from
-  text += `📖  ${topLabel}\n`;
-  text += `Question: ${top.question}\n\n`;
-
-  // Answer body — full for short answers, excerpt for long ones
-  const isShort = top.answer.trim().split(/\s+/).length <= 80;
-  text += isShort ? top.answer.trim() : excerpt(top.answer);
-
-  if (!isShort) {
-    text += '\n\n(Open the Paper › Unit to read the complete answer.)';
-  }
-
-  // Secondary result from a different unit
-  const secondary = results.find(
+  const other = results.find(
     r => r.paperCode !== top.paperCode || r.unitTitle !== top.unitTitle
   );
-  if (secondary) {
-    const secLabel = `${secondary.paperCode} › ${secondary.unitTitle}`;
-    text += `\n\n─────────────────\n`;
-    text += `Also relevant — ${secLabel}:\n`;
-    text += excerpt(secondary.answer, 45);
+  if (other) {
+    text += `\n\nRelated (${other.paperCode} · ${other.unitTitle}): ${firstSentences(other.answer, 1)}`;
   }
 
-  const sources = results.slice(0, 3).map(r => `${r.paperCode} · ${r.unitTitle}`);
-  return { text, sources };
+  return {
+    text,
+    sources: results.slice(0, 2).map(toSourceChip),
+  };
+}
+
+// Build source chips from raw result items (used by Gemini path in ChatScreen)
+export function toSourceChips(results) {
+  return results.slice(0, 1).map(toSourceChip);
 }

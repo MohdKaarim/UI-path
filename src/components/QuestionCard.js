@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 
 export default function QuestionCard({ question, markType, onPress, bookmarked }) {
-  const accent = markType === '2' ? colors.twoMark : colors.fifteenMark;
+  const accent = markType === '2' ? colors.twoMark : markType === '8' ? colors.eightMark : colors.fifteenMark;
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <View style={[styles.badge, { backgroundColor: accent }]}>

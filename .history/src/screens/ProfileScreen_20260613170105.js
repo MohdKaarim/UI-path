@@ -205,7 +205,7 @@ export default function ProfileScreen() {
           ['book-multiple', '5 Papers (SPHS101–105)'],
           ['format-list-numbered', '25 Units of content'],
           ['help-circle', '500+ Q&A pairs indexed'],
-          ['robot', 'Gemini 2.0 Flash AI model'],
+          ['robot', 'Gemini 1.5 Flash AI model'],
         ].map(([icon, label]) => (
           <View key={icon} style={styles.statRow}>
             <MaterialCommunityIcons name={icon} size={16} color={colors.primary} />

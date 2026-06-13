@@ -15,13 +15,13 @@ export function getAllQuestions() {
   for (const paper of allPapers) {
     for (const unit of paper.units) {
       for (const q of unit.twoMark) {
-        questions.push({ ...q, paperCode: paper.code, paperTitle: paper.shortTitle, unitTitle: unit.title, markType: '2' });
+        questions.push({ ...q, paperCode: paper.code, paperTitle: paper.shortTitle, unitId: unit.id, unitTitle: unit.title, markType: '2' });
       }
       for (const q of unit.eightMark || []) {
-        questions.push({ ...q, paperCode: paper.code, paperTitle: paper.shortTitle, unitTitle: unit.title, markType: '8' });
+        questions.push({ ...q, paperCode: paper.code, paperTitle: paper.shortTitle, unitId: unit.id, unitTitle: unit.title, markType: '8' });
       }
       for (const q of unit.fifteenMark) {
-        questions.push({ ...q, paperCode: paper.code, paperTitle: paper.shortTitle, unitTitle: unit.title, markType: '15' });
+        questions.push({ ...q, paperCode: paper.code, paperTitle: paper.shortTitle, unitId: unit.id, unitTitle: unit.title, markType: '15' });
       }
     }
   }

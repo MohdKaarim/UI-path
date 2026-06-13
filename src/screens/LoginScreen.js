@@ -18,32 +18,57 @@ import { colors } from '../utils/colors';
 export default function LoginScreen() {
   const { loginOrRegisterWithEmail, continueAsGuest } = useAuth();
 
+  const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
+  const [secureConfirm, setSecureConfirm] = useState(true);
   const [loadingEmail, setLoadingEmail] = useState(false);
+  const [errors, setErrors] = useState({});
 
-  const handleEmailAuth = async () => {
+  const switchMode = (next) => {
+    setMode(next);
+    setErrors({});
+    setPassword('');
+    setConfirmPassword('');
+  };
+
+  const validate = () => {
+    const errs = {};
     const cleanEmail = email.trim();
-    if (!cleanEmail || !password) {
-      Alert.alert('Required Fields', 'Please fill in both Email and Password.');
-      return;
-    }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(cleanEmail)) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
-      return;
+
+    if (!cleanEmail) {
+      errs.email = 'Email is required.';
+    } else if (!emailRegex.test(cleanEmail)) {
+      errs.email = 'Enter a valid email address.';
     }
 
-    if (password.length < 6) {
-      Alert.alert('Password too short', 'Password should be at least 6 characters long.');
-      return;
+    if (!password) {
+      errs.password = 'Password is required.';
+    } else if (password.length < 6) {
+      errs.password = 'Password must be at least 6 characters.';
     }
+
+    if (mode === 'signup') {
+      if (!confirmPassword) {
+        errs.confirmPassword = 'Please confirm your password.';
+      } else if (password !== confirmPassword) {
+        errs.confirmPassword = 'Passwords do not match.';
+      }
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
 
     setLoadingEmail(true);
     try {
-      const res = await loginOrRegisterWithEmail(cleanEmail, password);
+      const res = await loginOrRegisterWithEmail(email.trim(), password, mode);
       if (res.success && res.isNew) {
         Alert.alert(
           'Account Created',
@@ -51,7 +76,16 @@ export default function LoginScreen() {
         );
       }
     } catch (err) {
-      Alert.alert('Authentication Failed', err.message || 'Incorrect email or password.');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('password')) {
+        setErrors(prev => ({ ...prev, password: 'Incorrect password. Please try again.' }));
+      } else if (msg.toLowerCase().includes('email')) {
+        setErrors(prev => ({ ...prev, email: msg }));
+      } else if (msg.toLowerCase().includes('already registered')) {
+        setErrors(prev => ({ ...prev, email: 'This email is already registered. Switch to Sign In.' }));
+      } else {
+        Alert.alert('Error', msg || 'Something went wrong. Please try again.');
+      }
     } finally {
       setLoadingEmail(false);
     }
@@ -73,34 +107,58 @@ export default function LoginScreen() {
         <Text style={styles.title}>Mastering History</Text>
         <Text style={styles.subtitle}>AI Study Assistant</Text>
 
-        {/* Email & Password Login Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Sign In / Register</Text>
+        {/* Mode toggle */}
+        <View style={styles.modeRow}>
+          <TouchableOpacity
+            style={[styles.modeBtn, mode === 'signin' && styles.modeBtnActive]}
+            onPress={() => switchMode('signin')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.modeBtnText, mode === 'signin' && styles.modeBtnTextActive]}>
+              Sign In
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeBtn, mode === 'signup' && styles.modeBtnActive]}
+            onPress={() => switchMode('signup')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.modeBtnText, mode === 'signup' && styles.modeBtnTextActive]}>
+              Register
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-          <View style={styles.inputContainer}>
+        {/* Form card */}
+        <View style={styles.card}>
+
+          {/* Email */}
+          <View style={[styles.inputContainer, errors.email && styles.inputError]}>
             <MaterialCommunityIcons
               name="email-outline"
               size={20}
-              color={colors.textSecondary}
+              color={errors.email ? colors.error : colors.textSecondary}
               style={styles.inputIcon}
             />
             <TextInput
               style={styles.input}
-              placeholder="Email ID"
+              placeholder="Email address"
               placeholderTextColor={colors.textLight}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={v => { setEmail(v); setErrors(p => ({ ...p, email: null })); }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
           </View>
+          {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
 
-          <View style={styles.inputContainer}>
+          {/* Password */}
+          <View style={[styles.inputContainer, errors.password && styles.inputError]}>
             <MaterialCommunityIcons
               name="lock-outline"
               size={20}
-              color={colors.textSecondary}
+              color={errors.password ? colors.error : colors.textSecondary}
               style={styles.inputIcon}
             />
             <TextInput
@@ -108,7 +166,7 @@ export default function LoginScreen() {
               placeholder="Password (min 6 chars)"
               placeholderTextColor={colors.textLight}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={v => { setPassword(v); setErrors(p => ({ ...p, password: null })); }}
               secureTextEntry={secureText}
               autoCapitalize="none"
               autoCorrect={false}
@@ -121,22 +179,56 @@ export default function LoginScreen() {
               />
             </TouchableOpacity>
           </View>
+          {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+
+          {/* Confirm Password — only on signup */}
+          {mode === 'signup' && (
+            <>
+              <View style={[styles.inputContainer, errors.confirmPassword && styles.inputError]}>
+                <MaterialCommunityIcons
+                  name="lock-check-outline"
+                  size={20}
+                  color={errors.confirmPassword ? colors.error : colors.textSecondary}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Confirm password"
+                  placeholderTextColor={colors.textLight}
+                  value={confirmPassword}
+                  onChangeText={v => { setConfirmPassword(v); setErrors(p => ({ ...p, confirmPassword: null })); }}
+                  secureTextEntry={secureConfirm}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity onPress={() => setSecureConfirm(!secureConfirm)}>
+                  <MaterialCommunityIcons
+                    name={secureConfirm ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+              {errors.confirmPassword
+                ? <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+                : null}
+            </>
+          )}
 
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={handleEmailAuth}
+            onPress={handleSubmit}
             disabled={loadingEmail}
             activeOpacity={0.85}
           >
             {loadingEmail ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.actionBtnText}>Continue with Email</Text>
+              <Text style={styles.actionBtnText}>
+                {mode === 'signin' ? 'Sign In' : 'Create Account'}
+              </Text>
             )}
           </TouchableOpacity>
-          <Text style={styles.cardHint}>
-            New email addresses will be registered automatically
-          </Text>
         </View>
 
         {/* Divider */}
@@ -198,6 +290,35 @@ const styles = StyleSheet.create({
     color: colors.primary,
     marginBottom: 20,
   },
+
+  // Mode toggle
+  modeRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.border,
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 16,
+    alignSelf: 'stretch',
+  },
+  modeBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modeBtnActive: {
+    backgroundColor: colors.primary,
+    elevation: 2,
+  },
+  modeBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  modeBtnTextActive: {
+    color: '#fff',
+  },
+
   card: {
     alignSelf: 'stretch',
     backgroundColor: colors.surface,
@@ -210,13 +331,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 6,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -224,8 +338,11 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: 12,
-    marginBottom: 14,
+    marginBottom: 4,
     height: 50,
+  },
+  inputError: {
+    borderColor: colors.error || '#D32F2F',
   },
   inputIcon: { marginRight: 8 },
   input: {
@@ -234,13 +351,19 @@ const styles = StyleSheet.create({
     color: colors.text,
     height: '100%',
   },
+  errorText: {
+    fontSize: 12,
+    color: colors.error || '#D32F2F',
+    marginBottom: 10,
+    marginLeft: 4,
+  },
   actionBtn: {
     backgroundColor: colors.secondary,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
+    marginTop: 10,
     elevation: 2,
   },
   actionBtnText: {
@@ -248,12 +371,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  cardHint: {
-    fontSize: 11,
-    color: colors.textLight,
-    textAlign: 'center',
-    marginTop: 10,
-  },
+
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',

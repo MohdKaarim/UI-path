@@ -4,7 +4,7 @@ import {
   Animated, ActivityIndicator, StatusBar, Platform, Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -27,10 +27,10 @@ import OnboardingModal from '../components/OnboardingModal';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+const navigationRef = createNavigationContainerRef();
 
 const TAB_ICONS = {
   HomeTab:   'book-open-variant',
-  Search:    'magnify',
   Bookmarks: 'bookmark-multiple',
   PYQ:       'file-document-multiple',
   Profile:   'account-circle',
@@ -98,8 +98,8 @@ function PulseBubble({ onPress }) {
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.bubbleWrap}>
-      <Animated.View style={{ transform: [{ scale: pulse }] }}>
-        <Image source={AI_BUBBLE} style={styles.bubbleImage} resizeMode="contain" />
+      <Animated.View style={[styles.bubbleClip, { transform: [{ scale: pulse }] }]}>
+        <Image source={AI_BUBBLE} style={styles.bubbleImage} resizeMode="cover" />
       </Animated.View>
     </TouchableOpacity>
   );
@@ -113,7 +113,23 @@ function HomeStack() {
       headerTintColor: '#fff',
       headerTitleStyle: { fontWeight: '700' },
     }}>
-      <Stack.Screen name="Home"      component={HomeScreen}      options={{ title: 'Mastering History' }} />
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={({ navigation }) => ({
+          title: 'Mastering History',
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Search')}
+              style={{ marginRight: 4, padding: 4 }}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="magnify" size={24} color="#fff" />
+            </TouchableOpacity>
+          ),
+        })}
+      />
+      <Stack.Screen name="Search"    component={SearchScreen}    options={{ title: 'Search' }} />
       <Stack.Screen name="Paper"     component={PaperScreen}     options={({ route }) => ({ title: route.params?.paperCode || 'Paper' })} />
       <Stack.Screen name="Questions" component={QuestionsScreen} options={({ route }) => ({ title: route.params?.unitTitle || 'Questions' })} />
       <Stack.Screen name="Answer"    component={AnswerScreen}    options={{ title: 'Answer' }} />
@@ -138,6 +154,18 @@ function MainTabs() {
     AsyncStorage.setItem('onboarding_done', 'true');
   };
 
+  const handleSourcePress = (questionId, paperCode, unitId, markType) => {
+    setChatOpen(false);
+    setTimeout(() => {
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('HomeTab', {
+          screen: 'Answer',
+          params: { questionId, paperCode, unitId, markType },
+        });
+      }
+    }, 350);
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
@@ -157,11 +185,6 @@ function MainTabs() {
         })}
       >
         <Tab.Screen name="HomeTab"   component={HomeStack}       options={{ title: 'Papers' }} />
-        <Tab.Screen name="Search"    component={SearchScreen}    options={{
-          title: 'Search', headerShown: true,
-          headerStyle: { backgroundColor: colors.primary },
-          headerTintColor: '#fff', headerTitleStyle: { fontWeight: '700' },
-        }} />
         <Tab.Screen name="Bookmarks" component={BookmarksScreen} options={{
           title: 'Bookmarks', headerShown: true,
           headerStyle: { backgroundColor: colors.primary },
@@ -206,7 +229,7 @@ function MainTabs() {
             </TouchableOpacity>
           </View>
           {/* Chat content */}
-          <ChatScreen />
+          <ChatScreen onSourcePress={handleSourcePress} />
         </View>
       </Modal>
     </View>
@@ -226,7 +249,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {(user || isGuest) ? <MainTabs /> : <LoginScreen />}
     </NavigationContainer>
   );
@@ -256,12 +279,23 @@ const styles = StyleSheet.create({
     elevation: 10,
     shadowColor: '#00ACC1',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  // Circular clip — crops the white padding and shows only the robot
+  bubbleClip: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    overflow: 'hidden',
+    backgroundColor: '#29C5D6',
   },
   bubbleImage: {
-    width: 72,
-    height: 72,
+    // Slightly larger than container so cropped edges remove white borders
+    width: 80,
+    height: 80,
+    marginTop: -9,
+    marginLeft: -9,
   },
 
   // Chat modal

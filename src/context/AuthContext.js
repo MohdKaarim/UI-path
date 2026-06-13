@@ -66,7 +66,7 @@ export function AuthProvider({ children }) {
     await SecureStore.deleteItemAsync('guest_name');
   };
 
-  const loginOrRegisterWithEmail = async (email, password) => {
+  const loginOrRegisterWithEmail = async (email, password, mode = 'signin') => {
     const formattedEmail = email.trim().toLowerCase();
     if (!formattedEmail || !password) {
       throw new Error('Email and password are required');
@@ -77,6 +77,7 @@ export function AuthProvider({ children }) {
       const users = usersJson ? JSON.parse(usersJson) : {};
 
       if (users[formattedEmail]) {
+        // Email exists — always attempt login regardless of mode
         if (users[formattedEmail].password === password) {
           const loggedInUser = {
             email: formattedEmail,
@@ -92,11 +93,23 @@ export function AuthProvider({ children }) {
           await SecureStore.setItemAsync('gauth_token', token);
           await SecureStore.deleteItemAsync('guest_status');
           await SecureStore.deleteItemAsync('guest_name');
+          if (mode === 'signup') {
+            // Already registered — treat as successful sign-in
+            return { success: true, user: loggedInUser };
+          }
           return { success: true, user: loggedInUser };
         } else {
-          throw new Error('Incorrect password');
+          if (mode === 'signup') {
+            throw new Error('This email is already registered. Please sign in instead.');
+          }
+          throw new Error('Incorrect password. Please try again.');
         }
       } else {
+        // Email not found
+        if (mode === 'signin') {
+          throw new Error('No account found for this email. Please register first.');
+        }
+        // mode === 'signup' — create new account
         const newUser = { email: formattedEmail, password, name: '' };
         users[formattedEmail] = newUser;
         await AsyncStorage.setItem('registered_users', JSON.stringify(users));
@@ -118,7 +131,6 @@ export function AuthProvider({ children }) {
         return { success: true, isNew: true, user: loggedInUser };
       }
     } catch (err) {
-      console.error('Email authentication error:', err);
       throw err;
     }
   };

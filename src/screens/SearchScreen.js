@@ -25,18 +25,12 @@ export default function SearchScreen({ navigation }) {
   const openAnswer = useCallback((item) => {
     const parts = item.id.split('_');
     const unitId = parseInt(parts[1], 10);
-    navigation.navigate('HomeTab', {
-      screen: 'Home',
-      params: undefined,
-      initial: false,
+    navigation.navigate('Answer', {
+      questionId: item.id,
+      paperCode: item.paperCode,
+      unitId,
+      markType: item.markType,
     });
-    // Navigate after switching tabs
-    setTimeout(() => {
-      navigation.navigate('HomeTab', {
-        screen: 'Answer',
-        params: { questionId: item.id, paperCode: item.paperCode, unitId, markType: item.markType },
-      });
-    }, 100);
   }, [navigation]);
 
   return (
