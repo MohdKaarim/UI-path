@@ -1,8 +1,7 @@
 {
   "expo": {
-    "name": "Mastering History",
+    "name": "MA History",
     "slug": "ma-history-madras",
-    "scheme": "com.madrasuniversity.mahistory",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -36,8 +35,7 @@
           "iosAppId": "ca-app-pub-3940256099942544~1458002511",
           "delay_app_measurement_init": true
         }
-      ],
-      "expo-secure-store"
+      ]
     ],
     "extra": {
       "eas": {

@@ -73,7 +73,7 @@ export default function SearchScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.resultCard} onPress={() => openAnswer(item)} activeOpacity={0.85}>
-            <View style={[styles.markBadge, { backgroundColor: item.markType === '2' ? colors.twoMark : colors.fifteenMark }]}>
+            <View style={[styles.markBadge, { backgroundColor: item.markType === '2' ? colors.twoMark : item.markType === '8' ? colors.eightMark : colors.fifteenMark }]}>
               <Text style={styles.markText}>{item.markType}M</Text>
             </View>
             <View style={{ flex: 1 }}>

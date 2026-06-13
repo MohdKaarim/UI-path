@@ -56,7 +56,7 @@ export default function BookmarksScreen({ navigation }) {
         renderItem={({ item }) => (
           <View style={styles.card}>
             <TouchableOpacity style={styles.cardMain} onPress={() => openAnswer(item)} activeOpacity={0.85}>
-              <View style={[styles.badge, { backgroundColor: item.markType === '2' ? colors.twoMark : colors.fifteenMark }]}>
+              <View style={[styles.badge, { backgroundColor: item.markType === '2' ? colors.twoMark : item.markType === '8' ? colors.eightMark : colors.fifteenMark }]}>
                 <Text style={styles.badgeText}>{item.markType}M</Text>
               </View>
               <View style={{ flex: 1 }}>

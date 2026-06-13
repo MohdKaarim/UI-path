@@ -17,6 +17,9 @@ export function getAllQuestions() {
       for (const q of unit.twoMark) {
         questions.push({ ...q, paperCode: paper.code, paperTitle: paper.shortTitle, unitTitle: unit.title, markType: '2' });
       }
+      for (const q of unit.eightMark || []) {
+        questions.push({ ...q, paperCode: paper.code, paperTitle: paper.shortTitle, unitTitle: unit.title, markType: '8' });
+      }
       for (const q of unit.fifteenMark) {
         questions.push({ ...q, paperCode: paper.code, paperTitle: paper.shortTitle, unitTitle: unit.title, markType: '15' });
       }

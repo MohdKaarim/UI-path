@@ -26,7 +26,7 @@ export default function QuizScreen({ route, navigation }) {
 
   const questions = useMemo(() => {
     if (!unit) return [];
-    const all = [...unit.twoMark, ...unit.fifteenMark];
+    const all = [...unit.twoMark, ...(unit.eightMark || []), ...unit.fifteenMark];
     return shuffle(all).slice(0, 10).map(q => {
       const correctAnswer = truncate(q.answer);
       const wrongPool = shuffle(all.filter(x => x.id !== q.id)).slice(0, 3).map(x => truncate(x.answer));

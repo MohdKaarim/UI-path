@@ -39,6 +39,11 @@ export default function PaperScreen({ route, navigation }) {
                 <View style={[styles.countBadge, { backgroundColor: colors.twoMark }]}>
                   <Text style={styles.countText}>{item.twoMark.length} × 2M</Text>
                 </View>
+                {item.eightMark?.length > 0 && (
+                  <View style={[styles.countBadge, { backgroundColor: colors.eightMark }]}>
+                    <Text style={styles.countText}>{item.eightMark.length} × 8M</Text>
+                  </View>
+                )}
                 <View style={[styles.countBadge, { backgroundColor: colors.fifteenMark }]}>
                   <Text style={styles.countText}>{item.fifteenMark.length} × 15M</Text>
                 </View>

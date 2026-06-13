@@ -24,6 +24,9 @@ export default function QuestionsScreen({ route, navigation }) {
 
   const sections = [
     { title: '2-Mark Questions', data: unit.twoMark, markType: '2' },
+    ...(unit.eightMark?.length > 0
+      ? [{ title: '8-Mark Questions', data: unit.eightMark, markType: '8' }]
+      : []),
     { title: '15-Mark Questions', data: unit.fifteenMark, markType: '15' },
   ];
 
@@ -46,7 +49,7 @@ export default function QuestionsScreen({ route, navigation }) {
         keyExtractor={item => item.id}
         stickySectionHeadersEnabled
         renderSectionHeader={({ section }) => (
-          <View style={[styles.sectionHeader, { backgroundColor: section.markType === '2' ? colors.twoMark : colors.fifteenMark }]}>
+          <View style={[styles.sectionHeader, { backgroundColor: section.markType === '2' ? colors.twoMark : section.markType === '8' ? colors.eightMark : colors.fifteenMark }]}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
           </View>
         )}

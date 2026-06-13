@@ -11,6 +11,7 @@ export const colors = {
   success: '#2E7D32',
   error: '#C62828',
   twoMark: '#1B5E20',
+  eightMark: '#BF360C',
   fifteenMark: '#4A148C',
   quiz: '#E65100',
 };

@@ -10,12 +10,16 @@ export default function AnswerScreen({ route, navigation }) {
   const { questionId, paperCode, unitId, markType } = route.params;
   const paper = getPaperByCode(paperCode);
   const unit = paper?.units.find(u => u.id === unitId);
-  const question = markType === '2'
-    ? unit?.twoMark.find(q => q.id === questionId)
-    : unit?.fifteenMark.find(q => q.id === questionId);
+  const question =
+    markType === '2'
+      ? unit?.twoMark.find(q => q.id === questionId)
+      : markType === '8'
+      ? unit?.eightMark?.find(q => q.id === questionId)
+      : unit?.fifteenMark.find(q => q.id === questionId);
 
   const [bookmarked, setBookmarked] = useState(false);
-  const accent = markType === '2' ? colors.twoMark : colors.fifteenMark;
+  const accent =
+    markType === '2' ? colors.twoMark : markType === '8' ? colors.eightMark : colors.fifteenMark;
 
   useEffect(() => {
     isBookmarked(questionId).then(setBookmarked);
