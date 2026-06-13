@@ -27,10 +27,22 @@
 # ── SecureStore ───────────────────────────────────────────────────────────────
 -keep class expo.modules.securestore.** { *; }
 
-# ── Google Mobile Ads ─────────────────────────────────────────────────────────
+# ── Google Mobile Ads (AdMob) — full official rules ───────────────────────────
 -keep class com.google.android.gms.ads.** { *; }
 -keep class com.google.ads.** { *; }
--dontwarn com.google.android.gms.ads.**
+-keep class com.google.android.gms.common.** { *; }
+-keep class com.google.android.gms.internal.ads.** { *; }
+-keep class com.google.android.gms.measurement.** { *; }
+-keep class com.google.android.gms.tasks.** { *; }
+-keep class com.google.android.ump.** { *; }
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.android.gms.**
+-dontwarn com.google.firebase.**
+-dontwarn com.google.ads.**
+
+# AdMob mediation adapters
+-keep class com.google.ads.mediation.** { *; }
+-keep class com.google.android.gms.ads.mediation.** { *; }
 
 # ── OkHttp (networking) ───────────────────────────────────────────────────────
 -keep class okhttp3.** { *; }
@@ -43,10 +55,14 @@
 -keep class kotlin.Metadata { *; }
 -dontwarn kotlin.**
 -keepclassmembers class **$WhenMappings { <fields>; }
--keepclassmembers class kotlin.Lazy { *; }
 
 # ── General Android ───────────────────────────────────────────────────────────
 -keepattributes *Annotation*
 -keepattributes SourceFile,LineNumberTable
 -keep public class * extends java.lang.Exception
 -keep class **.R$* { *; }
+
+# Keep JavaScript interface methods called from JS
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
