@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "MA History – Madras University",
+    "slug": "ma-history-madras",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1565C0"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1565C0"
+      },
+      "package": "com.madrasuniversity.mahistory",
+      "versionCode": 1,
+      "permissions": []
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.madrasuniversity.mahistory"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-9489708234526393~6575955120",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "delay_app_measurement_init": true
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "becd40f8-ea16-42a3-b132-928c3a560e46"
+      }
+    },
+    "owner": "karim_0911"
+  }
+}
