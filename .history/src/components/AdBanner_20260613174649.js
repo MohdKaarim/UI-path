@@ -10,7 +10,7 @@ const BANNER_ID = __DEV__
     });
 
 // Temporary: using test banner to verify ad loading
-// const BANNER_ID = TestIds.BANNER;
+const BANNER_ID = TestIds.BANNER;
 
 export default function AdBanner() {
   const [loaded, setLoaded] = useState(false);
