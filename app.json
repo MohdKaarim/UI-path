@@ -28,6 +28,13 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "assets": [
+      "./src/data/Reference/SPHS101.pdf",
+      "./src/data/Reference/SPHS102.pdf",
+      "./src/data/Reference/SPHS103.pdf",
+      "./src/data/Reference/SPHS104.pdf",
+      "./src/data/Reference/SPHS105.pdf"
+    ],
     "plugins": [
       [
         "react-native-google-mobile-ads",

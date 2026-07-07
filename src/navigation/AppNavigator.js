@@ -20,6 +20,8 @@ import ChatScreen from '../screens/ChatScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import LoginScreen from '../screens/LoginScreen';
 import PYQScreen from '../screens/PYQScreen';
+import LibraryScreen from '../screens/LibraryScreen';
+import PDFViewerScreen from '../screens/PDFViewerScreen';
 
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../utils/colors';
@@ -33,8 +35,30 @@ const TAB_ICONS = {
   HomeTab:   'book-open-variant',
   Bookmarks: 'bookmark-multiple',
   PYQ:       'file-document-multiple',
+  Library:   'bookshelf',
   Profile:   'account-circle',
 };
+
+// ─── Library stack ─────────────────────────────────────────────────────────────
+const LibStack = createNativeStackNavigator();
+function LibraryStack() {
+  return (
+    <LibStack.Navigator screenOptions={{
+      headerStyle: { backgroundColor: colors.primary },
+      headerTintColor: '#fff',
+      headerTitleStyle: { fontWeight: '700' },
+    }}>
+      <LibStack.Screen name="Library" component={LibraryScreen} options={{ title: 'Textbook Library' }} />
+      <LibStack.Screen
+        name="PDFViewer"
+        component={PDFViewerScreen}
+        options={({ route }) => ({
+          title: route.params?.title || route.params?.paperCode || 'Textbook',
+        })}
+      />
+    </LibStack.Navigator>
+  );
+}
 
 // ─── Animated tab icon ────────────────────────────────────────────────────────
 function AnimatedTabIcon({ name, focused, color, size }) {
@@ -134,6 +158,13 @@ function HomeStack() {
       <Stack.Screen name="Questions" component={QuestionsScreen} options={({ route }) => ({ title: route.params?.unitTitle || 'Questions' })} />
       <Stack.Screen name="Answer"    component={AnswerScreen}    options={{ title: 'Answer' }} />
       <Stack.Screen name="Quiz"      component={QuizScreen}      options={{ title: 'Quiz Mode', headerStyle: { backgroundColor: colors.quiz } }} />
+      <Stack.Screen
+        name="PDFViewer"
+        component={PDFViewerScreen}
+        options={({ route }) => ({
+          title: route.params?.title || route.params?.paperCode || 'Textbook',
+        })}
+      />
     </Stack.Navigator>
   );
 }
@@ -196,6 +227,7 @@ function MainTabs() {
           headerTintColor: '#fff', headerTitleStyle: { fontWeight: '700' },
           headerTitle: 'Previous Year Papers',
         }} />
+        <Tab.Screen name="Library"   component={LibraryStack}    options={{ title: 'Library', headerShown: false }} />
         <Tab.Screen name="Profile"   component={ProfileScreen}   options={{
           title: 'Profile', headerShown: true,
           headerStyle: { backgroundColor: colors.primary },

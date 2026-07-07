@@ -88,6 +88,23 @@ export default function AnswerScreen({ route, navigation }) {
             {bookmarked ? 'Bookmarked' : 'Bookmark'}
           </Text>
         </TouchableOpacity>
+
+        {question.page != null && (
+          <TouchableOpacity
+            style={styles.textbookBtn}
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('PDFViewer', {
+              paperCode,
+              page: question.page,
+              title: `${paperCode} – p.${question.page}`,
+            })}
+          >
+            <MaterialCommunityIcons name="file-pdf-box" size={20} color={accent} />
+            <Text style={[styles.textbookText, { color: accent }]}>
+              p.{question.page}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
       <AdBanner />
     </View>
@@ -128,17 +145,21 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    gap: 10,
   },
   bookmarkBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
@@ -146,4 +167,16 @@ const styles = StyleSheet.create({
   },
   bookmarkActive: { borderColor: colors.accent, backgroundColor: '#FFF8E1' },
   bookmarkText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+  textbookBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  textbookText: { fontSize: 13, fontWeight: '700' },
 });

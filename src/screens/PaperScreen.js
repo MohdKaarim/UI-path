@@ -17,6 +17,18 @@ export default function PaperScreen({ route, navigation }) {
         <Text style={styles.paperCode}>{paper.code}</Text>
         <Text style={styles.paperTitle}>{paper.shortTitle}</Text>
         <Text style={styles.paperSubtitle}>{paper.subtitle}</Text>
+        <TouchableOpacity
+          style={styles.pdfBtn}
+          onPress={() => navigation.navigate('PDFViewer', {
+            paperCode: paper.code,
+            page: 1,
+            title: paper.shortTitle,
+          })}
+          activeOpacity={0.8}
+        >
+          <MaterialCommunityIcons name="file-pdf-box" size={18} color="#fff" />
+          <Text style={styles.pdfBtnText}>Read Textbook PDF</Text>
+        </TouchableOpacity>
       </View>
       <FlatList
         data={paper.units}
@@ -68,6 +80,20 @@ const styles = StyleSheet.create({
   paperCode: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: 1 },
   paperTitle: { fontSize: 18, color: '#fff', fontWeight: '800', marginTop: 4 },
   paperSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  pdfBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  pdfBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   list: { paddingTop: 12 },
   unitCard: {
     flexDirection: 'row',
