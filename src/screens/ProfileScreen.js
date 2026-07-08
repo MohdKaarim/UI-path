@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
-  TextInput, Modal, Alert, ScrollView, Linking,
+  TextInput, Modal, Alert, ScrollView, Linking, Switch,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useBubbleSettings } from '../context/BubbleSettingsContext';
 import { colors } from '../utils/colors';
 
 export default function ProfileScreen() {
   const { user, isGuest, signOut, updateUsername, geminiApiKey, saveGeminiApiKey, canUseGemini } = useAuth();
+  const { bubbleEnabled, setBubbleEnabled, resetBubblePosition } = useBubbleSettings();
 
   const [nameModalVisible, setNameModalVisible] = useState(false);
   const [newName, setNewName] = useState(user?.name || '');
@@ -180,6 +182,36 @@ export default function ProfileScreen() {
             {geminiApiKey ? 'Update API Key' : 'Add Gemini API Key'}
           </Text>
         </TouchableOpacity>
+      </View>
+
+      {/* AI Bubble settings card */}
+      <View style={styles.apiKeyCard}>
+        <View style={styles.bubbleSettingRow}>
+          <View style={styles.bubbleSettingLeft}>
+            <MaterialCommunityIcons name="robot-happy-outline" size={22} color={colors.primary} />
+            <View style={{ marginLeft: 10, flex: 1 }}>
+              <Text style={styles.apiKeyTitle}>AI Assistant Bubble</Text>
+              <Text style={styles.apiKeyHint}>Drag the floating bubble anywhere on screen, or turn it off.</Text>
+            </View>
+          </View>
+          <Switch
+            value={bubbleEnabled}
+            onValueChange={setBubbleEnabled}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor="#fff"
+          />
+        </View>
+
+        {bubbleEnabled && (
+          <TouchableOpacity
+            style={styles.resetBubbleBtn}
+            onPress={resetBubblePosition}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="restore" size={16} color={colors.primary} />
+            <Text style={styles.resetBubbleBtnText}>Reset bubble position</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Info card */}
@@ -384,6 +416,15 @@ const styles = StyleSheet.create({
     borderRadius: 10, gap: 6,
   },
   apiKeyBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+  bubbleSettingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  bubbleSettingLeft: { flexDirection: 'row', alignItems: 'flex-start', flex: 1, marginRight: 10 },
+  resetBubbleBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, marginTop: 14, paddingVertical: 8,
+    borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  resetBubbleBtnText: { fontSize: 13, fontWeight: '600', color: colors.primary },
 
   infoCard: {
     flexDirection: 'row', backgroundColor: colors.surface,

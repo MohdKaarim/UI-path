@@ -2,8 +2,10 @@ import React, { useRef, useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, StyleSheet,
   Animated, ActivityIndicator, StatusBar, Platform, Image,
+  PanResponder, Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Portal } from 'react-native-paper';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -24,6 +26,7 @@ import LibraryScreen from '../screens/LibraryScreen';
 import PDFViewerScreen from '../screens/PDFViewerScreen';
 
 import { useAuth } from '../context/AuthContext';
+import { useBubbleSettings } from '../context/BubbleSettingsContext';
 import { colors } from '../utils/colors';
 import OnboardingModal from '../components/OnboardingModal';
 
@@ -57,6 +60,49 @@ function LibraryStack() {
         })}
       />
     </LibStack.Navigator>
+  );
+}
+
+// ─── Single-screen stacks (Bookmarks / PYQ / Profile) ──────────────────────────
+// Wrapped in their own native-stack (instead of the bottom-tabs' own header) so
+// the floating AI bubble — rendered outside the tab navigator — isn't painted
+// over by the surface react-native-screens promotes for tab-level headers.
+const BookmarksStackNav = createNativeStackNavigator();
+function BookmarksStack() {
+  return (
+    <BookmarksStackNav.Navigator screenOptions={{
+      headerStyle: { backgroundColor: colors.primary },
+      headerTintColor: '#fff',
+      headerTitleStyle: { fontWeight: '700' },
+    }}>
+      <BookmarksStackNav.Screen name="Bookmarks" component={BookmarksScreen} options={{ title: 'Bookmarks' }} />
+    </BookmarksStackNav.Navigator>
+  );
+}
+
+const PYQStackNav = createNativeStackNavigator();
+function PYQStack() {
+  return (
+    <PYQStackNav.Navigator screenOptions={{
+      headerStyle: { backgroundColor: colors.primary },
+      headerTintColor: '#fff',
+      headerTitleStyle: { fontWeight: '700' },
+    }}>
+      <PYQStackNav.Screen name="PYQ" component={PYQScreen} options={{ title: 'Previous Year Papers' }} />
+    </PYQStackNav.Navigator>
+  );
+}
+
+const ProfileStackNav = createNativeStackNavigator();
+function ProfileStack() {
+  return (
+    <ProfileStackNav.Navigator screenOptions={{
+      headerStyle: { backgroundColor: colors.primary },
+      headerTintColor: '#fff',
+      headerTitleStyle: { fontWeight: '700' },
+    }}>
+      <ProfileStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
+    </ProfileStackNav.Navigator>
   );
 }
 
@@ -106,8 +152,28 @@ function AnimatedTabIcon({ name, focused, color, size }) {
 // ─── AI chat bubble (uses assets/ai-bubble.png) ───────────────────────────────
 const AI_BUBBLE = require('../../assets/ai-bubble.webp');
 
-function PulseBubble({ onPress }) {
+const DRAG_MARGIN = 6;
+
+function defaultBubblePosition() {
+  const { width, height } = Dimensions.get('window');
+  return {
+    x: width - BUBBLE_OUTER_SIZE - 14,
+    y: height - NAV_HEIGHT - BUBBLE_OUTER_SIZE - 10,
+  };
+}
+
+function clampBubblePosition(pos) {
+  const { width, height } = Dimensions.get('window');
+  return {
+    x: Math.max(DRAG_MARGIN, Math.min(pos.x, width - BUBBLE_OUTER_SIZE - DRAG_MARGIN)),
+    y: Math.max(DRAG_MARGIN, Math.min(pos.y, height - BUBBLE_OUTER_SIZE - DRAG_MARGIN)),
+  };
+}
+
+function PulseBubble({ onPress, position, onDragEnd }) {
   const pulse = useRef(new Animated.Value(1)).current;
+  const pan = useRef(new Animated.ValueXY(position || defaultBubblePosition())).current;
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -120,12 +186,51 @@ function PulseBubble({ onPress }) {
     return () => loop.stop();
   }, []);
 
+  // Re-sync when the position changes from outside a drag (e.g. "Reset
+  // bubble position" in Profile) — pan is otherwise only set from gestures.
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    Animated.spring(pan, {
+      toValue: position || defaultBubblePosition(),
+      useNativeDriver: false,
+      friction: 6,
+    }).start();
+  }, [position]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        pan.setOffset({ x: pan.x._value, y: pan.y._value });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: pan.x, dy: pan.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: (_evt, gesture) => {
+        pan.flattenOffset();
+        const moved = Math.abs(gesture.dx) > 6 || Math.abs(gesture.dy) > 6;
+        const clamped = clampBubblePosition({ x: pan.x._value, y: pan.y._value });
+        Animated.spring(pan, { toValue: clamped, useNativeDriver: false, friction: 6 }).start();
+        onDragEnd(clamped);
+        if (!moved) onPress();
+      },
+    })
+  ).current;
+
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.bubbleWrap}>
+    <Animated.View
+      {...panResponder.panHandlers}
+      style={[styles.bubbleWrap, { transform: pan.getTranslateTransform() }]}
+    >
       <Animated.View style={[styles.bubbleClip, { transform: [{ scale: pulse }] }]}>
         <Image source={AI_BUBBLE} style={styles.bubbleImage} resizeMode="cover" />
       </Animated.View>
-    </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -173,6 +278,7 @@ function HomeStack() {
 function MainTabs() {
   const [chatOpen, setChatOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const { bubbleEnabled, bubblePosition, setBubblePosition, loaded: bubbleSettingsLoaded } = useBubbleSettings();
 
   useEffect(() => {
     AsyncStorage.getItem('onboarding_done').then(val => {
@@ -185,15 +291,32 @@ function MainTabs() {
     AsyncStorage.setItem('onboarding_done', 'true');
   };
 
-  const handleSourcePress = (questionId, paperCode, unitId, markType) => {
+  const handleSourcePress = (source) => {
     setChatOpen(false);
     setTimeout(() => {
-      if (navigationRef.isReady()) {
+      if (!navigationRef.isReady()) return;
+
+      if (source.type === 'textbook') {
         navigationRef.navigate('HomeTab', {
-          screen: 'Answer',
-          params: { questionId, paperCode, unitId, markType },
+          screen: 'PDFViewer',
+          params: {
+            paperCode: source.paperCode,
+            page: source.page,
+            title: `${source.paperCode} · Page ${source.page}`,
+          },
         });
+        return;
       }
+
+      navigationRef.navigate('HomeTab', {
+        screen: 'Answer',
+        params: {
+          questionId: source.questionId,
+          paperCode: source.paperCode,
+          unitId: source.unitId,
+          markType: source.markType,
+        },
+      });
     }, 350);
   };
 
@@ -216,27 +339,24 @@ function MainTabs() {
         })}
       >
         <Tab.Screen name="HomeTab"   component={HomeStack}       options={{ title: 'Papers' }} />
-        <Tab.Screen name="Bookmarks" component={BookmarksScreen} options={{
-          title: 'Bookmarks', headerShown: true,
-          headerStyle: { backgroundColor: colors.primary },
-          headerTintColor: '#fff', headerTitleStyle: { fontWeight: '700' },
-        }} />
-        <Tab.Screen name="PYQ"       component={PYQScreen}       options={{
-          title: 'PYQ', headerShown: true,
-          headerStyle: { backgroundColor: colors.primary },
-          headerTintColor: '#fff', headerTitleStyle: { fontWeight: '700' },
-          headerTitle: 'Previous Year Papers',
-        }} />
-        <Tab.Screen name="Library"   component={LibraryStack}    options={{ title: 'Library', headerShown: false }} />
-        <Tab.Screen name="Profile"   component={ProfileScreen}   options={{
-          title: 'Profile', headerShown: true,
-          headerStyle: { backgroundColor: colors.primary },
-          headerTintColor: '#fff', headerTitleStyle: { fontWeight: '700' },
-        }} />
+        <Tab.Screen name="Bookmarks" component={BookmarksStack}  options={{ title: 'Bookmarks' }} />
+        <Tab.Screen name="PYQ"       component={PYQStack}       options={{ title: 'PYQ' }} />
+        <Tab.Screen name="Library"   component={LibraryStack}    options={{ title: 'Library' }} />
+        <Tab.Screen name="Profile"   component={ProfileStack}   options={{ title: 'Profile' }} />
       </Tab.Navigator>
 
-      {/* Floating AI bubble — bottom-left, above nav bar */}
-      <PulseBubble onPress={() => setChatOpen(true)} />
+      {/* Floating, draggable AI bubble — position persists, can be disabled in Profile.
+          Rendered via Portal so it composites above native-header screens, which
+          react-native-screens otherwise promotes to a surface above plain siblings. */}
+      {bubbleSettingsLoaded && bubbleEnabled && (
+        <Portal>
+          <PulseBubble
+            onPress={() => setChatOpen(true)}
+            position={bubblePosition}
+            onDragEnd={setBubblePosition}
+          />
+        </Portal>
+      )}
 
       {/* First-time onboarding */}
       <OnboardingModal visible={showOnboarding} onDone={handleOnboardingDone} />
@@ -288,7 +408,7 @@ export default function AppNavigator() {
 }
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
-const BUBBLE_SIZE = 56;
+const BUBBLE_OUTER_SIZE = 62;
 const NAV_HEIGHT  = 62;
 
 const styles = StyleSheet.create({
@@ -305,8 +425,8 @@ const styles = StyleSheet.create({
   // ── Floating bubble ──────────────────────────────────────────────────────────
   bubbleWrap: {
     position: 'absolute',
-    bottom: NAV_HEIGHT + 10,
-    right: 14,
+    top: 0,
+    left: 0,
     zIndex: 999,
     elevation: 10,
     shadowColor: '#00ACC1',

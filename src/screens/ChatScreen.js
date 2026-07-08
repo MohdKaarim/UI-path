@@ -61,10 +61,14 @@ const MessageBubble = memo(({ item, onSourcePress }) => {
               <TouchableOpacity
                 key={i}
                 style={styles.sourceChip}
-                onPress={() => onSourcePress && onSourcePress(src.questionId, src.paperCode, src.unitId, src.markType)}
+                onPress={() => onSourcePress && onSourcePress(src)}
                 activeOpacity={0.75}
               >
-                <MaterialCommunityIcons name="book-open-page-variant-outline" size={11} color={colors.primary} />
+                <MaterialCommunityIcons
+                  name={src.type === 'textbook' ? 'book-open-page-variant' : 'book-open-page-variant-outline'}
+                  size={11}
+                  color={colors.primary}
+                />
                 <Text style={styles.sourceChipText} numberOfLines={1}>{src.label}</Text>
                 <MaterialCommunityIcons name="chevron-right" size={13} color={colors.primary} />
               </TouchableOpacity>
@@ -94,7 +98,7 @@ export default function ChatScreen({ onSourcePress }) {
 
     if (!canUseGemini) {
       // Local is fully synchronous — reply instantly, no spinner
-      const local = buildLocalResponse(localResults);
+      const local = buildLocalResponse(localResults, text);
       setMessages(prev => [
         ...prev,
         { id: `u_${Date.now()}`, isUser: true, text, sources: [] },
@@ -109,11 +113,12 @@ export default function ChatScreen({ onSourcePress }) {
     setLoading(true);
 
     try {
-      let replyText = await askGemini(text, localResults, geminiApiKey);
-      replyText = replyText.replace(/\n*📚[^\n]*/g, '').trim();
+      const { text: replyText, textbookSource } = await askGemini(text, localResults, geminiApiKey);
+      const sources = [...toSourceChips(localResults)];
+      if (textbookSource) sources.push(textbookSource);
       setMessages(prev => [
         ...prev,
-        { id: `b_${Date.now()}`, isUser: false, text: replyText, sources: toSourceChips(localResults) },
+        { id: `b_${Date.now()}`, isUser: false, text: replyText.trim(), sources },
       ]);
     } catch (e) {
       setMessages(prev => [

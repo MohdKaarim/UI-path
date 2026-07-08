@@ -4,6 +4,7 @@ import { PaperProvider } from 'react-native-paper';
 import mobileAds, { MaxAdContentRating } from 'react-native-google-mobile-ads';
 import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
+import { BubbleSettingsProvider } from './src/context/BubbleSettingsContext';
 import { colors } from './src/utils/colors';
 
 export default function App() {
@@ -25,10 +26,12 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <PaperProvider>
-        <StatusBar style="light" backgroundColor={colors.primary} />
-        <AppNavigator adsReady={adsReady} />
-      </PaperProvider>
+      <BubbleSettingsProvider>
+        <PaperProvider>
+          <StatusBar style="light" backgroundColor={colors.primary} />
+          <AppNavigator adsReady={adsReady} />
+        </PaperProvider>
+      </BubbleSettingsProvider>
     </AuthProvider>
   );
 }

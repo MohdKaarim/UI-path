@@ -1,9 +1,10 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ActivityIndicator,
   Platform, StatusBar,
 } from 'react-native';
 import Pdf from 'react-native-pdf';
+import { Asset } from 'expo-asset';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../utils/colors';
 
@@ -31,10 +32,36 @@ export default function PDFViewerScreen({ route, navigation }) {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [localUri, setLocalUri] = useState(null);
   const pdfRef = useRef(null);
 
   const accentColor = PAPER_COLORS[paperCode] || colors.primary;
   const source = PDF_SOURCES[paperCode];
+
+  // react-native-pdf needs a real file:// path on Android — resolve the
+  // require()'d module (a Metro asset id) to one via expo-asset.
+  useEffect(() => {
+    if (!source) return;
+    let cancelled = false;
+    setLocalUri(null);
+    setError(null);
+    setLoading(true);
+
+    Asset.fromModule(source)
+      .downloadAsync()
+      .then((asset) => {
+        if (!cancelled) setLocalUri(asset.localUri || asset.uri);
+      })
+      .catch((err) => {
+        console.error('PDF asset resolve error:', err);
+        if (!cancelled) {
+          setError('Could not load the textbook. Please rebuild the app.');
+          setLoading(false);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [source]);
 
   const handleLoadComplete = useCallback((pages) => {
     setTotalPages(pages);
@@ -106,10 +133,10 @@ export default function PDFViewerScreen({ route, navigation }) {
           <Text style={styles.errorText}>{error}</Text>
           <Text style={styles.errorHint}>Run: npx expo run:android</Text>
         </View>
-      ) : (
+      ) : localUri ? (
         <Pdf
           ref={pdfRef}
-          source={source}
+          source={{ uri: localUri }}
           page={initialPage}
           onLoadComplete={handleLoadComplete}
           onPageChanged={handlePageChanged}
@@ -122,7 +149,7 @@ export default function PDFViewerScreen({ route, navigation }) {
             <ActivityIndicator size="large" color={accentColor} />
           }
         />
-      )}
+      ) : null}
 
       {loading && !error && (
         <View style={styles.loadingOverlay}>

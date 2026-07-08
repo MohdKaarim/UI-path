@@ -1,5 +1,6 @@
 import Fuse from 'fuse.js';
 import { getAllQuestions } from '../data';
+import { searchTextbook, paperTitle } from './TextbookService';
 
 const _questions = getAllQuestions();
 const _fuse = new Fuse(_questions, {
@@ -82,6 +83,7 @@ function firstSentences(text, max = 2) {
 // Build a source chip object for navigation
 function toSourceChip(r) {
   return {
+    type: 'qa',
     label: `${r.paperCode} · ${r.unitTitle} (${r.markType}M)`,
     questionId: r.id,
     paperCode: r.paperCode,
@@ -90,8 +92,39 @@ function toSourceChip(r) {
   };
 }
 
-export function buildLocalResponse(results) {
+function toTextbookSourceChip(chunk) {
+  return {
+    type: 'textbook',
+    label: `${chunk.paperCode} · Page ${chunk.page}`,
+    paperCode: chunk.paperCode,
+    page: chunk.page,
+  };
+}
+
+// Pick a short, clean-sounding excerpt from a textbook chunk (trims mid-word
+// PDF-extraction cutoffs at the edges so it reads like a real sentence).
+function excerptOf(chunk, maxSentences = 2) {
+  const oneLine = chunk.text.replace(/\n+/g, ' ').trim();
+  const sentences = oneLine.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length) return sentences.slice(0, maxSentences).join(' ').trim();
+  return oneLine.length > 220 ? oneLine.slice(0, 220).trim() + '…' : oneLine;
+}
+
+export function buildLocalResponse(results, query = '') {
+  const textbookHits = query ? searchTextbook(query, 2) : [];
+
   if (!results.length) {
+    if (textbookHits.length) {
+      // No curated Q&A match, but the textbook itself has something — lead
+      // with that instead of a flat "not found".
+      const hit = textbookHits[0];
+      return {
+        text:
+          `I didn't find a ready-made answer for that, but your ${paperTitle(hit.paperCode)} ` +
+          `textbook (page ${hit.page}) talks about it:\n\n"${excerptOf(hit, 3)}"`,
+        sources: [toTextbookSourceChip(hit)],
+      };
+    }
     return {
       text:
         "I couldn't find that in the syllabus. Try asking about a specific topic — for example:\n" +
@@ -101,19 +134,30 @@ export function buildLocalResponse(results) {
   }
 
   const top = results[0];
-  let text = firstSentences(top.answer, 2);
+  const coreAnswer = firstSentences(top.answer, 3);
+
+  // Narrative framing — turns the terse Q&A answer into a short, guided explanation.
+  let text = `Here's how ${top.unitTitle} explains it: ${coreAnswer}`;
+
+  const sources = [toSourceChip(top)];
+
+  // Weave in the textbook's own wording when it adds something beyond the
+  // curated answer — this is what actually grounds the reply in the textbook.
+  const textbookHit = textbookHits.find(h => h.paperCode === top.paperCode) || textbookHits[0];
+  if (textbookHit && !coreAnswer.includes(excerptOf(textbookHit, 1).slice(0, 40))) {
+    text += `\n\nYour textbook (${textbookHit.paperCode}, page ${textbookHit.page}) adds more detail:\n"${excerptOf(textbookHit, 2)}"`;
+    sources.push(toTextbookSourceChip(textbookHit));
+  }
 
   const other = results.find(
     r => r.paperCode !== top.paperCode || r.unitTitle !== top.unitTitle
   );
   if (other) {
-    text += `\n\nRelated (${other.paperCode} · ${other.unitTitle}): ${firstSentences(other.answer, 1)}`;
+    text += `\n\nWorth also knowing — in ${other.paperCode} · ${other.unitTitle}: ${firstSentences(other.answer, 1)}`;
+    sources.push(toSourceChip(other));
   }
 
-  return {
-    text,
-    sources: results.slice(0, 2).map(toSourceChip),
-  };
+  return { text, sources };
 }
 
 // Build source chips from raw result items (used by Gemini path in ChatScreen)
